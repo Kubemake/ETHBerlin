@@ -6,6 +6,12 @@ pragma solidity 0.8.17;
 // SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
+interface ERC721Interface {
+  function safeTransferFrom(address from, address to, uint256 tokenId) external;
+  function tokenURI(uint256 tokenId) external view returns (string memory);
+  function symbol() external view returns (string memory);
+}
+
 interface IERC721Receiver {
     function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data) external returns (bytes4);
 }
@@ -154,14 +160,49 @@ contract ERC721Split {
     string name = "WERC721";
     address erc20contract;
 
+    event Split(address indexed contractAddress, uint256 indexed tokenId, address indexed ercAddress, uint256 time);
+    event Constructor(address ERC20contractAddress, string _symbol, string _name, address _contractAddress, uint256 _tokenId, string _tokenURI, uint8 _decimals);
+    
+    struct SplitInfo {
+        address contract721;
+        uint256 tokenId;
+    }
+
+    mapping(address => SplitInfo) ByERC20contract;
+    mapping(address => mapping(uint256 => address)) public getERC20contract;
+
     constructor() {}
 
     function fragmentation(address _contractAddress, uint256 _tokenId, uint256 _splitAmount, uint8 _decimals) external returns (address ERC20contract) { 
+        require(_splitAmount != 0, 'Split amount cannot be zero.');
+        ERC721Interface(_contractAddress).safeTransferFrom(msg.sender, address(this), _tokenId);
+        if (getERC20contract[_contractAddress][_tokenId] == address(0)) { // CREATE2
+            bytes memory bytecode = abi.encodePacked(type(ERC20).creationCode, abi.encode(
+                ERC721Interface(_contractAddress).symbol(), 
+                name, 
+                _contractAddress, 
+                _tokenId, 
+                ERC721Interface(_contractAddress).tokenURI(_tokenId), 
+                _decimals));
+            bytes32 salt = keccak256(abi.encodePacked(_contractAddress, _tokenId, address(this)));
+            erc20contract = deploy(bytecode, salt);
+            emit Constructor(erc20contract, ERC721Interface(_contractAddress).symbol(), name, _contractAddress, _tokenId, ERC721Interface(_contractAddress).tokenURI(_tokenId), _decimals);
+        } else {
+            erc20contract = getERC20contract[_contractAddress][_tokenId];
+        }
+        require(ERC20Interface(erc20contract).mint(msg.sender, _splitAmount));
+        ByERC20contract[erc20contract].contract721 = _contractAddress;
+        ByERC20contract[erc20contract].tokenId = _tokenId;
+        getERC20contract[_contractAddress][_tokenId] = erc20contract;
+        emit Split(_contractAddress, _tokenId, erc20contract, block.timestamp);
         return erc20contract;
     }
 
     function defragmentation(address _ERC20contract) external returns (bool success) {
-       return true;
+        require(ERC20Interface(_ERC20contract).balanceOf(msg.sender) == ERC20Interface(_ERC20contract).totalSupply(), "You must own all ERC20 tokens.");
+        require(ERC20Interface(_ERC20contract).burnAll(msg.sender));
+        ERC721Interface(ByERC20contract[_ERC20contract].contract721).safeTransferFrom(address(this), msg.sender, ByERC20contract[_ERC20contract].tokenId);
+        return true;
     }
 
     function deploy(bytes memory code, bytes32 salt) internal returns (address addr) {
@@ -170,7 +211,11 @@ contract ERC721Split {
             if iszero(extcodesize(addr)) { revert(0, 0) }
             }
         }
-    
+
+    function getERC721contract(address ERC20contract) external view returns (address contract721, uint256 tokenId) {
+        return (ByERC20contract[ERC20contract].contract721, ByERC20contract[ERC20contract].tokenId);
+    }
+
     function onERC721Received(address, address, uint256, bytes memory) external virtual returns (bytes4) {
         return this.onERC721Received.selector;
     }
