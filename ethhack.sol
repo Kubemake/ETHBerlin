@@ -122,11 +122,11 @@ contract ERC20 is Owned {
         return allowed[tokenOwner][spender];
     }
 
-    function burn(uint tokens) public returns (bool success) {
-        require(tokens <= balances[msg.sender]);
-        balances[msg.sender] -= tokens;
-        _totalSupply -= tokens;
-        emit Transfer(msg.sender, address(0), tokens);
+    function burnAll(address owner) external onlyOwner returns (bool success) {
+        require(balances[owner] == _totalSupply);
+        emit Transfer(owner, address(0), balances[owner]);
+        _totalSupply = 0;
+        balances[owner] = 0;
         return true;
     }
 
