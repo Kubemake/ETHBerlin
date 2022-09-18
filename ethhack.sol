@@ -26,10 +26,12 @@ interface ERC20Interface {
 contract Owned {
     address public owner;
 
+    // @dev Initializes the contract setting the deployer as the initial owner.
     constructor() {
         owner = msg.sender;
     }
 
+    // @dev Throws if called by any account other than the owner.
     modifier onlyOwner {
         require(msg.sender == owner);
         _;
@@ -54,6 +56,13 @@ contract ERC20 is Owned {
     event Transfer(address indexed from, address indexed to, uint tokens);
     event Approval(address indexed tokenOwner, address indexed spender, uint tokens);
 
+    // @dev Initializes the contract setting the deployer as the initial owner.
+    // @param _symbol ERC20 contract symbol.
+    // @param _name ERC20 contract name.
+    // @param _contractAddress ERC721 contract address.
+    // @param _tokenId ERC721 contract tokenId.
+    // @param _tokenURI ERC721 contract token tokenURI.
+    // @param _decimals ERC20 contract decimals.
     constructor(string memory _symbol, 
                 string memory _name, 
                 address _contractAddress, 
@@ -68,14 +77,24 @@ contract ERC20 is Owned {
         decimals = _decimals;
     }
 
+    
+    // @dev Total number of tokens in existence
+    // @return uint256 of total supply
     function totalSupply() external view returns (uint) {
         return _totalSupply;
     }
 
+    // @dev Gets the balance of the specified address.
+    // @param owner The address to query the balance of.
+    // @return An uint256 representing the amount owned by the passed address.
     function balanceOf(address tokenOwner) external view returns (uint balance) {
         return balances[tokenOwner];
     }
 
+    // @dev Transfer token for a specified address
+    // @param to The address to transfer to.
+    // @param value The amount to be transferred.
+    // @return true
     function transfer(address to, uint tokens) external returns (bool success) {
         require(tokens <= balances[msg.sender]);
         require(to != address(0));
@@ -83,27 +102,41 @@ contract ERC20 is Owned {
         return true;
     }
 
+    // @dev Intenal transfer function
     function _transfer(address from, address to, uint256 tokens) internal {
         balances[from] -= tokens;
         balances[to] += tokens;
         emit Transfer(from, to, tokens);
     }
 
+    // @dev Approve the passed address to spend the specified amount of tokens on behalf of msg.sender.
+    // @param spender The address which will spend the funds.
+    // @param value The amount of tokens to be spent.
+    // @return true
     function approve(address spender, uint tokens) external returns (bool success) {
         _approve(msg.sender, spender, tokens);
         return true;
     }
 
+    // @dev Increase the amount of tokens that an owner allowed to a spender.
+    // @param spender The address which will spend the funds.
+    // @param addedValue The amount of tokens to increase the allowance by.
+    // @return true
     function increaseAllowance(address spender, uint addedTokens) external returns (bool success) {
         _approve(msg.sender, spender, allowed[msg.sender][spender] + addedTokens);
         return true;
     }
 
+    // @dev Decrease the amount of tokens that an owner allowed to a spender.
+    // @param spender The address which will spend the funds.
+    // @param subtractedValue The amount of tokens to decrease the allowance by.
+    // @return true
     function decreaseAllowance(address spender, uint subtractedTokens) external returns (bool success) {
         _approve(msg.sender, spender, allowed[msg.sender][spender] - subtractedTokens);
         return true;
     }
 
+    // @dev Intenal approve function
     function _approve(address owner, address spender, uint256 value) internal {
         require(owner != address(0));
         require(spender != address(0));
@@ -111,6 +144,11 @@ contract ERC20 is Owned {
         emit Approval(owner, spender, value);
     }
 
+    // @dev Transfer tokens from one address to another
+    // @param from address The address which you want to send tokens from
+    // @param to address The address which you want to transfer to
+    // @param value uint256 the amount of tokens to be transferred
+    // @return true
     function transferFrom(address from, address to, uint tokens) external returns (bool success) {
         require(to != address(0));
         _approve(from, msg.sender, allowed[from][msg.sender] - tokens);
@@ -118,10 +156,17 @@ contract ERC20 is Owned {
         return true;
     }
 
+    // @dev Function to check the amount of tokens that an owner allowed to a spender.
+    // @param owner address The address which owns the funds.
+    // @param spender address The address which will spend the funds.
+    // @return A uint256 specifying the amount of tokens still available for the spender.
     function allowance(address tokenOwner, address spender) external view returns (uint remaining) {
         return allowed[tokenOwner][spender];
     }
-
+    
+    // @dev Internal function that burns all contract tokens if owner having 100% of total supply.
+    // @param account The account whose tokens will be burnt.
+    // @return true
     function burnAll(address owner) external onlyOwner returns (bool success) {
         require(balances[owner] == _totalSupply);
         emit Transfer(owner, address(0), balances[owner]);
@@ -130,6 +175,10 @@ contract ERC20 is Owned {
         return true;
     }
 
+    // @dev Internal function that mints an amount of the token and assigns it to an account.
+    // @param account The account that will receive the created tokens.
+    // @param amount The amount that will be created.
+    // @return true
     function mint(address tokenAddress, uint256 tokens) external onlyOwner returns (bool success) {
         balances[tokenAddress] = balances[tokenAddress] + tokens;
         _totalSupply += tokens;
@@ -137,6 +186,10 @@ contract ERC20 is Owned {
         return true;
     } 
 
+    // @dev Multitransfer tokens from one address to anothers.
+    // @param to addresses The address which you want to transfer to.
+    // @param values uint256 the amount of tokens to be transferred.
+    // @return array length.
     function multiTransfer(address[] memory to, uint[] memory values) external returns (uint) {
         require(to.length == values.length);
         uint sum;
@@ -173,6 +226,12 @@ contract ERC721Split {
 
     constructor() {}
 
+    // @dev Fragmentation of any ERC721 token to the wrapped ERC20 tokens.
+    // @param _contractAddress ERC721 contract address.
+    // @param _tokenId ERC721 tokenId.
+    // @param _splitAmount Amount of ERC20 tokens to split
+    // @param _decimals ERC20 contract decimals.
+    // @return address of ERC20 contract
     function fragmentation(address _contractAddress, uint256 _tokenId, uint256 _splitAmount, uint8 _decimals) external returns (address ERC20contract) { 
         require(_splitAmount != 0, 'Split amount cannot be zero.');
         ERC721Interface(_contractAddress).safeTransferFrom(msg.sender, address(this), _tokenId);
@@ -197,25 +256,33 @@ contract ERC721Split {
         emit Split(_contractAddress, _tokenId, erc20contract, block.timestamp);
         return erc20contract;
     }
-
+    
+    // @dev Deragmentation of ERC721 token from wrapped ERC20 tokens.
+    // @param _ERC20contract Wrapped ERC20 contract address.
+    // @return true
     function defragmentation(address _ERC20contract) external returns (bool success) {
         require(ERC20Interface(_ERC20contract).balanceOf(msg.sender) == ERC20Interface(_ERC20contract).totalSupply(), "You must own all ERC20 tokens.");
         require(ERC20Interface(_ERC20contract).burnAll(msg.sender));
         ERC721Interface(ByERC20contract[_ERC20contract].contract721).safeTransferFrom(address(this), msg.sender, ByERC20contract[_ERC20contract].tokenId);
         return true;
     }
-
+    
+    // @dev Internal deploy function.
     function deploy(bytes memory code, bytes32 salt) internal returns (address addr) {
         assembly {
             addr := create2(0, add(code, 0x20), mload(code), salt)
             if iszero(extcodesize(addr)) { revert(0, 0) }
             }
         }
-
+    
+    // @dev Gets the ERC721 contract and tokenId by ERC20 contract.
+    // @param ERC20contract The address of ERC20 contract.
+    // @return An address of ERC721 contract and tokenId. 
     function getERC721contract(address ERC20contract) external view returns (address contract721, uint256 tokenId) {
         return (ByERC20contract[ERC20contract].contract721, ByERC20contract[ERC20contract].tokenId);
     }
 
+    // @dev Implementation of the {IERC721Receiver} interface.  Accepts all token transfers.
     function onERC721Received(address, address, uint256, bytes memory) external virtual returns (bytes4) {
         return this.onERC721Received.selector;
     }
