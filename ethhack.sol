@@ -167,9 +167,9 @@ contract ERC20 is Owned {
     // @dev Internal function that burns all contract tokens if owner having 100% of total supply.
     // @param account The account whose tokens will be burnt.
     // @return true
-    function burnAll(address owner) external onlyOwner returns (bool success) {
-        require(balances[owner] == _totalSupply);
-        emit Transfer(owner, address(0), balances[owner]);
+    function burnAll(address _owner) external onlyOwner returns (bool success) {
+        require(balances[_owner] == _totalSupply, "You must own all ERC20 tokens.");
+        emit Transfer(_owner, address(0), balances[_owner]);
         _totalSupply = 0;
         balances[owner] = 0;
         return true;
@@ -261,7 +261,6 @@ contract ERC721Split {
     // @param _ERC20contract Wrapped ERC20 contract address.
     // @return true
     function defragmentation(address _ERC20contract) external returns (bool success) {
-        require(ERC20Interface(_ERC20contract).balanceOf(msg.sender) == ERC20Interface(_ERC20contract).totalSupply(), "You must own all ERC20 tokens.");
         require(ERC20Interface(_ERC20contract).burnAll(msg.sender));
         ERC721Interface(ByERC20contract[_ERC20contract].contract721).safeTransferFrom(address(this), msg.sender, ByERC20contract[_ERC20contract].tokenId);
         return true;
