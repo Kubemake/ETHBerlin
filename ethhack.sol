@@ -10,6 +10,13 @@ interface IERC721Receiver {
     function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data) external returns (bytes4);
 }
 
+interface ERC20Interface {
+    function totalSupply() external view returns (uint);
+    function balanceOf(address tokenOwner) external view returns (uint);
+    function burnAll(address owner) external returns (bool success);
+    function mint(address tokenAddress, uint256 tokens) external returns (bool success);
+}
+
 contract Owned {
     address public owner;
 
@@ -41,8 +48,19 @@ contract ERC20 is Owned {
     event Transfer(address indexed from, address indexed to, uint tokens);
     event Approval(address indexed tokenOwner, address indexed spender, uint tokens);
 
-    constructor(){}
-    
+    constructor(string memory _symbol, 
+                string memory _name, 
+                address _contractAddress, 
+                uint256 _tokenId, 
+                string memory _tokenURI, 
+                uint8 _decimals) {
+        symbol = _symbol;
+        name = _name;
+        ERC721tokenCONTRACT = _contractAddress;
+        ERC721tokenID = _tokenId;
+        ERC721tokenURI = _tokenURI;
+        decimals = _decimals;
+    }
 
     function totalSupply() external view returns (uint) {
         return _totalSupply;
@@ -113,6 +131,20 @@ contract ERC20 is Owned {
         return true;
     } 
 
+    function multiTransfer(address[] memory to, uint[] memory values) external returns (uint) {
+        require(to.length == values.length);
+        uint sum;
+        for (uint j; j < values.length; j++) {
+            sum += values[j];
+        }
+        require(sum <= balances[msg.sender]);
+        balances[msg.sender] = balances[msg.sender] - sum;
+        for (uint i; i < to.length; i++) {
+            balances[to[i]] += values[i];
+            emit Transfer(msg.sender, to[i], values[i]);
+        }
+        return to.length;
+    }
 }
 
 // ----------------------------------------------------------------------------
