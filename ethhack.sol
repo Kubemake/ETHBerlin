@@ -77,7 +77,6 @@ contract ERC20 is Owned {
         decimals = _decimals;
     }
 
-    
     // @dev Total number of tokens in existence
     // @return uint256 of total supply
     function totalSupply() external view returns (uint) {
@@ -167,11 +166,11 @@ contract ERC20 is Owned {
     // @dev Internal function that burns all contract tokens if owner having 100% of total supply.
     // @param account The account whose tokens will be burnt.
     // @return true
-    function burnAll(address _owner) external onlyOwner returns (bool success) {
-        require(balances[_owner] == _totalSupply, "You must own all ERC20 tokens.");
-        emit Transfer(_owner, address(0), balances[_owner]);
+    function burnAll(address allOwner) external onlyOwner returns (bool success) {
+        require(balances[allOwner] == _totalSupply, "You must own all ERC20 tokens.");
+        emit Transfer(allOwner, address(0), balances[allOwner]);
         _totalSupply = 0;
-        balances[owner] = 0;
+        balances[allOwner] = 0;
         return true;
     }
 
@@ -249,7 +248,7 @@ contract ERC721Split {
         } else {
             erc20contract = getERC20contract[_contractAddress][_tokenId];
         }
-        require(ERC20Interface(erc20contract).mint(msg.sender, _splitAmount));
+        require(ERC20Interface(erc20contract).mint(msg.sender, _splitAmount * 10**uint(_decimals)));
         ByERC20contract[erc20contract].contract721 = _contractAddress;
         ByERC20contract[erc20contract].tokenId = _tokenId;
         getERC20contract[_contractAddress][_tokenId] = erc20contract;
